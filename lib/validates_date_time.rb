@@ -14,7 +14,9 @@ module ValidatesDateTime
   
   DEFAULT_TEMPORAL_VALIDATION_OPTIONS = {
     :before_message => "must be before %s",
+    :on_or_before_message => "must be on or before %s",
     :after_message  => "must be after %s",
+    :on_or_after_message  => "must be on or after %s",
     :on => :save
   }.freeze
   
@@ -119,6 +121,15 @@ module ValidatesDateTime
           end
         end
       end
+
+      if options[:on_or_before]
+        options[:on_or_before].each do |r|
+          if r.value(record) and value > r.last_value
+            record.errors.add(attr_name, options[:on_or_before_message] % r)
+            break
+          end
+        end
+      end
       
       if options[:after]
         options[:after].each do |r|
@@ -128,18 +139,32 @@ module ValidatesDateTime
           end
         end
       end
+
+      if options[:on_or_after]
+        options[:on_or_after].each do |r|
+          if r.value(record) and value < r.last_value
+            record.errors.add(attr_name, options[:on_or_after_message] % r)
+            break
+          end
+        end
+      end
     end
     
     def prepare_restrictions(options, parse_method)
       options[:before] = [*options[:before]].compact.map { |r| Restriction.new(r, parse_method) }
+      options[:on_or_before] = [*options[:on_or_before]].compact.map { |r| Restriction.new(r, parse_method) }
       options[:after] = [*options[:after]].compact.map { |r| Restriction.new(r, parse_method) }
+      options[:on_or_after] = [*options[:on_or_after]].compact.map { |r| Restriction.new(r, parse_method) }
     end
     
     def temporal_validation_options(options, args)
       returning options do
         options.reverse_merge!(DEFAULT_TEMPORAL_VALIDATION_OPTIONS)
         options.update(args.pop) if args.last.is_a?(Hash)
-        options.assert_valid_keys :message, :before_message, :after_message, :before, :after, :if, :on, :allow_nil
+        options.assert_valid_keys :message, 
+          :on_or_before_message, :before_message, :on_or_after_message, :after_message,
+          :on_or_before, :before, :on_or_after, :after,
+          :if, :on, :allow_nil
       end
     end
   end
